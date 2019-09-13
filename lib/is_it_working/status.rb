@@ -4,17 +4,24 @@ module IsItWorking
   # considered a success if all messages are ok.
   class Status
     # This class is used to contain individual status messages. Eache method can represent either
-    # and +ok+ message or a +fail+ message.
+    # an +ok+ message or a +fail+ message.
     class Message
-      attr_reader :message
+      RESULTS = [:ok, :warn, :fail].freeze
+      attr_reader :message, :result
 
-      def initialize(message, ok)
+      def initialize(message, result)
+        raise ArgumentError, "Result #{result} is not recognized!" unless RESULTS.include?(result)
+
         @message = message
-        @ok = ok
+        @result = result
       end
 
       def ok?
-        @ok
+        RESULTS[0..1].include?(result)
+      end
+
+      def warn?
+        result == :warn
       end
     end
 
@@ -34,17 +41,27 @@ module IsItWorking
 
     # Add a message indicating that the check passed.
     def ok(message)
-      @messages << Message.new(message, true)
+      @messages << Message.new(message, :ok)
+    end
+
+    # Add a message indicating that the check is tolerable but not ok.
+    def warn(message)
+      @messages << Message.new(message, :warn)
     end
 
     # Add a message indicating that the check failed.
     def fail(message)
-      @messages << Message.new(message, false)
+      @messages << Message.new(message, :fail)
     end
 
     # Returns +true+ only if all checks were OK.
     def success?
       @messages.all?{|m| m.ok?}
+    end
+
+    # Returns +true+ if all checks were OK but warnings were present.
+    def warnings?
+      success? && @messages.any?{|m| m.warn?}
     end
   end
 end

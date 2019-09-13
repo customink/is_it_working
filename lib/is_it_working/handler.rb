@@ -20,7 +20,7 @@ module IsItWorking
   #   end
   class Handler
     PATH_INFO = "PATH_INFO".freeze
-    
+
     # Create a new handler. This method can take a block which will yield itself so it can
     # be configured.
     #
@@ -55,7 +55,7 @@ module IsItWorking
     def hostname=(val)
       @hostname = val
     end
-    
+
     # Add a status check to the handler.
     #
     # If a block is given, it will be used as the status check and will be yielded to
@@ -75,7 +75,7 @@ module IsItWorking
       raise ArgumentError("Too many arguments to #{self.class.name}#check") if options_or_check.size > 2
       check = nil
       options = {:async => true}
-      
+
       unless options_or_check.empty?
         if options_or_check[0].is_a?(Hash)
           options = options.merge(options_or_check[0])
@@ -86,7 +86,7 @@ module IsItWorking
           options = options.merge(options_or_check[1])
         end
       end
-      
+
       unless check
         if block
           check = block
@@ -94,10 +94,10 @@ module IsItWorking
           check = lookup_check(name, options)
         end
       end
-      
+
       @filters << Filter.new(name, check, options[:async])
     end
-    
+
     # Helper method to synchronize a block of code so it can be thread safe.
     # This method uses a Mutex and is not re-entrant. The synchronization will
     # be only on calls to this handler.
@@ -108,44 +108,53 @@ module IsItWorking
     end
 
     protected
-      # Lookup a status check filter from the name and arguments
-      def lookup_check(name, options) #:nodoc:
-        check_class_name = "#{name.to_s.gsub(/(^|_)([a-z])/){|m| m.sub('_', '').upcase}}Check"
-        check = nil
-        if IsItWorking.const_defined?(check_class_name)
-          check_class = IsItWorking.const_get(check_class_name)
-          check = check_class.new(options)
-        else
-          raise ArgumentError.new("Check not defined #{check_class_name}")
+
+    # Lookup a status check filter from the name and arguments
+    def lookup_check(name, options) #:nodoc:
+      check_class_name = "#{name.to_s.gsub(/(^|_)([a-z])/){|m| m.sub('_', '').upcase}}Check"
+      check = nil
+      if IsItWorking.const_defined?(check_class_name)
+        check_class = IsItWorking.const_get(check_class_name)
+        check = check_class.new(options)
+      else
+        raise ArgumentError.new("Check not defined #{check_class_name}")
+      end
+      check
+    end
+
+    # Output the plain text response from calling all the filters.
+    def render(statuses, elapsed_time) #:nodoc:
+      code = if statuses.any?(&:warnings?)
+               203
+             elsif statuses.all?(&:success?)
+               200
+             else
+               500
+             end
+      headers = {
+        "Content-Type" => "text/plain; charset=utf8",
+        "Cache-Control" => "no-cache",
+        "Date" => Time.now.httpdate,
+      }
+
+      messages = []
+      statuses.each do |status|
+        status.messages.each do |m|
+          messages << render_line(status, m)
         end
-        check
       end
 
-      # Output the plain text response from calling all the filters.
-      def render(statuses, elapsed_time) #:nodoc:
-        fail = statuses.all?{|s| s.success?}
-        headers = {
-          "Content-Type" => "text/plain; charset=utf8",
-          "Cache-Control" => "no-cache",
-          "Date" => Time.now.httpdate,
-        }
-        
-        messages = []
-        statuses.each do |status|
-          status.messages.each do |m|
-            messages << "#{m.ok? ? 'OK:  ' : 'FAIL:'} #{status.name} - #{m.message} (#{status.time ? sprintf('%0.000f', status.time * 1000) : '?'}ms)"
-          end
-        end
-        
-        info = []
-        info << "Host: #{@hostname}" unless @hostname.size == 0
-        info << "PID:  #{$$}"
-        info << "Timestamp: #{Time.now.iso8601}"
-        info << "Elapsed Time: #{(elapsed_time * 1000).round}ms"
-        
-        code = (fail ? 200 : 500)
-        
-        [code, headers, [info.join("\n"), "\n\n", messages.join("\n")]]
-      end
+      info = []
+      info << "Host: #{@hostname}" unless @hostname.size == 0
+      info << "PID:  #{$$}"
+      info << "Timestamp: #{Time.now.iso8601}"
+      info << "Elapsed Time: #{(elapsed_time * 1000).round}ms"
+
+      [code, headers, [info.join("\n"), "\n\n", messages.join("\n")]]
+    end
+
+    def render_line(status, message)
+      "#{message.result.to_s.upcase}: #{status.name} - #{message.message} (#{status.time ? sprintf('%0.000f', status.time * 1000) : '?'}ms)"
+    end
   end
 end
