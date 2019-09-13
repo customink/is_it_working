@@ -58,7 +58,9 @@ describe IsItWorking::UrlCheck do
   end
 
   it "should send basic authentication" do
-    stub_request(:get, "user:passwd@example.com/test?a=1").to_return(:status => [200, "Success"])
+    stub_request(:get, "http://example.com/test?a=1")
+      .with(headers: { authorization: 'Basic dXNlcjpwYXNzd2Q=' })
+      .to_return(:status => [200, "Success"])
     check = IsItWorking::UrlCheck.new(:get => "http://example.com/test?a=1", :username => "user", :password => "passwd")
     check.call(status)
     status.should be_success
@@ -134,7 +136,7 @@ describe IsItWorking::UrlCheck do
     Net::HTTP.should_receive(:new).with('localhost', 80).and_return(http)
     request = Net::HTTP::Get.new("/test?a=1")
     Net::HTTP::Get.should_receive(:new).with("/test?a=1", {}).and_return(request)
-    http.should_receive(:start).and_raise(TimeoutError)
+    http.should_receive(:start).and_raise(Timeout::Error)
 
     check = IsItWorking::UrlCheck.new(:get => "http://localhost/test?a=1", :open_timeout => 1, :read_timeout => 2)
     check.call(status)

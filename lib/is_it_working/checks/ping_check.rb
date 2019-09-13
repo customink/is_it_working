@@ -28,7 +28,7 @@ module IsItWorking
       @timeout = options[:timeout] || 2
       @alias = options[:alias] || @host
     end
-    
+
     def call(status)
       begin
         ping(@host, @port)
@@ -41,9 +41,9 @@ module IsItWorking
         status.fail("#{@alias} did not respond on port #{@port.inspect} within #{@timeout} seconds")
       end
     end
-    
+
     def ping(host, port)
-      timeout(@timeout) do
+      Timeout.timeout(@timeout) do
         s = TCPSocket.new(host, port)
         s.close
       end

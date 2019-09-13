@@ -1,3 +1,5 @@
+require 'pry'
+
 begin
   require 'simplecov'
   SimpleCov.start do

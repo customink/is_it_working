@@ -9,7 +9,7 @@ describe IsItWorking::ActiveRecordCheck do
 
   class IsItWorking::TestActiveRecord < ActiveRecord::Base
   end
-  
+
   it "succeeds if the ActiveRecord connection is active" do
     abstract_conn.stub(active?: true)
     ActiveRecord::Base.stub(connection: abstract_conn)
@@ -18,7 +18,7 @@ describe IsItWorking::ActiveRecordCheck do
     expect(status).to be_success
     expect(status.messages.first.message).to eq "ActiveRecord::Base.connection is active"
   end
-  
+
   it "allows specifying the class to check the connection for" do
     abstract_conn.stub(active?: true)
     IsItWorking::TestActiveRecord.stub(connection: abstract_conn)
