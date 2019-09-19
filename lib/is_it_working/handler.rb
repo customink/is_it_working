@@ -95,7 +95,7 @@ module IsItWorking
         end
       end
 
-      @filters << Filter.new(name, check, options[:async])
+      @filters << Filter.new(name, check, options[:async], options)
     end
 
     # Helper method to synchronize a block of code so it can be thread safe.
