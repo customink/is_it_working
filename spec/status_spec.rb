@@ -34,6 +34,16 @@ describe IsItWorking::Status do
     status.messages.first.message.should == "uh oh"
   end
 
+  it "should have failures" do
+    status.fail("uh oh")
+    status.should be_failures
+    status.messages.size.should == 1
+    status.messages.first.should_not be_ok
+    status.messages.first.should_not be_warn
+    status.messages.first.should be_fail
+    status.messages.first.message.should == "uh oh"
+  end
+
   it "should have both errors and successes" do
     status.fail("boom")
     status.ok("wow")

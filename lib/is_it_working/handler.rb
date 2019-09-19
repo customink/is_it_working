@@ -124,12 +124,12 @@ module IsItWorking
 
     # Output the plain text response from calling all the filters.
     def render(statuses, elapsed_time) #:nodoc:
-      code = if statuses.any?(&:warnings?)
-               203
-             elsif statuses.all?(&:success?)
-               200
-             else
+      code = if statuses.any?(&:failures?)
                500
+             elsif statuses.any?(&:warnings?)
+               203
+             else
+               200
              end
       headers = {
         "Content-Type" => "text/plain; charset=utf8",

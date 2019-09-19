@@ -23,6 +23,10 @@ module IsItWorking
       def warn?
         result == :warn
       end
+
+      def fail?
+        result == :fail
+      end
     end
 
     # The name of the status check for display purposes.
@@ -62,6 +66,11 @@ module IsItWorking
     # Returns +true+ if all checks were OK but warnings were present.
     def warnings?
       success? && @messages.any?{|m| m.warn?}
+    end
+
+    # Returns +true+ if any checks were FAIL.
+    def failures?
+      @messages.any?{|m| m.fail?}
     end
   end
 end
