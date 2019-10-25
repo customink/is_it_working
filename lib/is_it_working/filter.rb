@@ -23,12 +23,12 @@ module IsItWorking
       @name = name
       @check = check
       @async = async
-      @status = Status.new(name)
     end
 
     # Run a status check. This method keeps track of the time it took to run
     # the check and will trap any unexpected exceptions and report them as failures.
     def run
+      @status = Status.new(name)
       @runner = (async ? AsyncRunner : SyncRunner).new do
         t = Time.now
         begin
