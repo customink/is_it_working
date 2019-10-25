@@ -10,13 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Checks can be set to a `warn` status when non-critical errors occur.
-- Timeouts can be set to add a `warn` or `fail` status to a check's messages when execution runs
-  past a set threshold.
+- Handler now exposes a `timer` method which can wrap a check and ok/warn/fail it based on how long it takes
 
 ### Changed
 
-- `Handler#check` signature now takes optional params for `timeout` and `warn_timeout`.
-- The handler will report an `HTTP 203` status when a run is successful but there are warnings.
+- The handler will report an `HTTP 302` status when a run is successful but there are warnings.
 
 ## [1.1.0] - 2019-09-13
 
