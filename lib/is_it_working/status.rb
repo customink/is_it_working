@@ -60,17 +60,17 @@ module IsItWorking
 
     # Returns +true+ only if all checks were OK.
     def success?
-      @messages.all?{|m| m.ok?}
+      @messages.all?(&:ok?)
     end
 
     # Returns +true+ if all checks were OK but warnings were present.
     def warnings?
-      success? && @messages.any?{|m| m.warn?}
+      success? && @messages.any?(&:warn?)
     end
 
     # Returns +true+ if any checks were FAIL.
     def failures?
-      @messages.any?{|m| m.fail?}
+      @messages.any?(&:fail?)
     end
   end
 end
