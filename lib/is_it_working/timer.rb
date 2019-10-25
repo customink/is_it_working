@@ -34,7 +34,6 @@ module IsItWorking
     end
 
     def timeout_exceeded?(time, val)
-      # binding.pry if time == nil
       time * 1000 > val
     end
   end
