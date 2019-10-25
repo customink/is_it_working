@@ -6,7 +6,8 @@ module IsItWorking
   autoload :Filter, File.expand_path("../is_it_working/filter.rb", __FILE__)
   autoload :Handler, File.expand_path("../is_it_working/handler.rb", __FILE__)
   autoload :Status, File.expand_path("../is_it_working/status.rb", __FILE__)
-  
+  autoload :Timer, File.expand_path("../is_it_working/timer.rb", __FILE__)
+
   # Predefined checks
   autoload :ActionMailerCheck, File.expand_path("../is_it_working/checks/action_mailer_check.rb", __FILE__)
   autoload :ActiveRecordCheck, File.expand_path("../is_it_working/checks/active_record_check.rb", __FILE__)

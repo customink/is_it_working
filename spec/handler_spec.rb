@@ -100,26 +100,32 @@ describe IsItWorking::Handler do
 
   it "should return a warning status if a check exceeds a warning timeout" do
     handler = IsItWorking::Handler.new do |h|
-      h.check :block, warn_timeout: 900 do |status|
-        sleep 1
-        status.ok('That took a while! 😅')
+      h.timer(warn: 1) do
+        h.check :block do |status|
+          sleep 0.02
+          status.ok('That took a while! 😅')
+        end
       end
     end
     response = handler.call({})
-    response.first.should == 203
+    response.first.should == 302
     response.last.flatten.join.should include("OK: block - That took a while")
     response.last.flatten.join.should include("WARN: block - runtime exceeded warning threshold")
   end
 
     it "should return a failure status if a check exceeds a warning timeout and a timeout" do
     handler = IsItWorking::Handler.new do |h|
-      h.check :block,  warn_timeout: 5, timeout: 9 do |status|
-        sleep 0.1
-        status.ok('That took a while! 😅')
+      h.timer(9, warn: 5) do
+        h.check :block do |status|
+          sleep 0.1
+          status.ok('That took a while! 😅')
+        end
       end
-      h.check :warn, warn_timeout: 5 do |status|
-        sleep 0.1
-        status.ok('That took a while! 😅')
+      h.timer(warn: 5) do
+        h.check :warn do |status|
+          sleep 0.1
+          status.ok('That took a while! 😅')
+        end
       end
     end
     response = handler.call({})

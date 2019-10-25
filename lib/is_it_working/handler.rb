@@ -33,6 +33,7 @@ module IsItWorking
       @app = app
       @route_path = route_path
       @hostname = `hostname`.chomp
+      @timers = []
       @filters = []
       @mutex = Mutex.new
       yield self if block_given?
@@ -43,6 +44,7 @@ module IsItWorking
         statuses = []
         t = Time.now
         statuses = Filter.run_filters(@filters)
+        Timer.run_timers(@timers)
         render(statuses, Time.now - t)
       else
         @app.call(env)
@@ -95,7 +97,9 @@ module IsItWorking
         end
       end
 
-      @filters << Filter.new(name, check, options[:async], options)
+      Filter.new(name, check, options[:async]).tap do |f|
+        @filters << f
+      end
     end
 
     # Helper method to synchronize a block of code so it can be thread safe.
@@ -105,6 +109,10 @@ module IsItWorking
       @mutex.synchronize do
         yield
       end
+    end
+
+    def timer(*args, **kwargs)
+      @timers << Timer.new(*args, **kwargs) { yield }
     end
 
     protected
@@ -127,7 +135,7 @@ module IsItWorking
       code = if statuses.any?(&:failures?)
                500
              elsif statuses.any?(&:warnings?)
-               203
+               302
              else
                200
              end
