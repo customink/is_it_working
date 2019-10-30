@@ -2,9 +2,9 @@ module IsItWorking
   class Timer
     attr_reader :failure_threshold, :filter, :warning_threshold
 
-    def initialize(threshold = Float::INFINITY, warn: Float::INFINITY)
-      @failure_threshold = threshold
-      @warning_threshold = warn
+    def initialize(warn_after: Float::INFINITY, fail_after: Float::INFINITY)
+      @failure_threshold = fail_after
+      @warning_threshold = warn_after
       @filter = yield
     end
 

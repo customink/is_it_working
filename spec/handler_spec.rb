@@ -100,7 +100,7 @@ describe IsItWorking::Handler do
 
   it "should return a warning status if a check exceeds a warning timeout" do
     handler = IsItWorking::Handler.new do |h|
-      h.timer(warn: 1) do
+      h.timer(warn_after: 1) do
         h.check :block do |status|
           sleep 0.02
           status.ok('That took a while! 😅')
@@ -115,13 +115,13 @@ describe IsItWorking::Handler do
 
     it "should return a failure status if a check exceeds a warning timeout and a timeout" do
     handler = IsItWorking::Handler.new do |h|
-      h.timer(9, warn: 5) do
+      h.timer(warn_after: 5, fail_after: 9) do
         h.check :block do |status|
           sleep 0.1
           status.ok('That took a while! 😅')
         end
       end
-      h.timer(warn: 5) do
+      h.timer(warn_after: 5) do
         h.check :warn do |status|
           sleep 0.1
           status.ok('That took a while! 😅')

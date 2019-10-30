@@ -18,28 +18,29 @@ Suppose you have a Rails application that uses the following services:
 * NFS shared directory symlinked to from system/data in the Rails root directory
 * SMTP server at mail.example.com
 * A black box service encapsulated in AwesomeService
+* A sidekiq queue that should be monitored for retries that aren't clearing out
 
 A monitoring handler for this set up could be set up in <tt>config/initializers/is_it_working.rb</tt> like this:
 
   Rails.configuration.middleware.use(IsItWorking::Handler) do |h|
     # Check the ActiveRecord database connection without spawning a new thread
     h.check :active_record, :async => false
-    
+
     # Check the memcache servers used by Rails.cache if using the DalliStore implementation
     h.check :dalli, :cache => Rails.cache if defined?(ActiveSupport::Cache::DalliStore) && Rails.cache.is_a?(ActiveSupport::Cache::DalliStore)
-    
+
     # Check that the web service is working by hitting a known URL with Basic authentication
     h.check :url, :get => "http://api.example.com/version", :username => "appname", :password => "abc123"
-    
+
     # Check that the NFS mount directory is available with read/write permissions
     h.check :directory, :path => Rails.root + "system/data", :permission => [:read, :write]
-    
+
     # Check the mail server configured for ActionMailer
     h.check :action_mailer if ActionMailer::Base.delivery_method == :smtp
-    
+
     # Ping another mail server
     h.check :ping, :host => "mail.example.com", :port => "smtp"
-    
+
     # Check that AwesomeService is working using the service's own logic
     h.check :awesome_service do |status|
       if AwesomeService.active?
