@@ -113,7 +113,7 @@ describe IsItWorking::Handler do
     response.last.flatten.join.should include("WARN: block - runtime exceeded warning threshold")
   end
 
-    it "should return a failure status if a check exceeds a warning timeout and a timeout" do
+  it "should return a failure status if a check exceeds a warning timeout and a timeout" do
     handler = IsItWorking::Handler.new do |h|
       h.timer(warn_after: 5, fail_after: 9) do
         h.check :block do |status|
@@ -132,6 +132,23 @@ describe IsItWorking::Handler do
     response.first.should == 500
     response.last.flatten.join.should include("OK: block - That took a while")
     response.last.flatten.join.should include("FAIL: block - runtime exceeded critical threshold")
+  end
+
+  it "should invoke a reporter with the specified filters" do
+    handler = IsItWorking::Handler.new do |h|
+      h.check :block do |status|
+        sleep 0.1
+        status.ok('That took a while! 😅')
+      end
+
+      h.reporter [:block] do |name, time|
+        @name = name
+        @time = time
+      end
+    end
+    handler.call({})
+    @name.should == :block
+    @time.should > 0.1
   end
 
   it "should be able to be used in a middleware stack with the route /is_it_working" do

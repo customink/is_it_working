@@ -35,6 +35,7 @@ module IsItWorking
       @hostname = `hostname`.to_s.chomp
       @timers = []
       @filters = []
+      @reporters = []
       @mutex = Mutex.new
       yield self if block_given?
     end
@@ -45,6 +46,7 @@ module IsItWorking
         t = Time.now
         statuses = Filter.run_filters(@filters)
         Timer.run_timers(@timers)
+        Reporter.run_reporters(@reporters, @filters)
         render(statuses, Time.now - t)
       else
         @app.call(env)
@@ -113,6 +115,10 @@ module IsItWorking
 
     def timer(*args, **kwargs)
       @timers << Timer.new(*args, **kwargs) { yield }
+    end
+
+    def reporter(filters, &block)
+      @reporters << Reporter.new(filters, block)
     end
 
     protected
