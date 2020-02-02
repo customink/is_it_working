@@ -32,7 +32,7 @@ module IsItWorking
     def initialize(app=nil, route_path="/is_it_working", &block)
       @app = app
       @route_path = route_path
-      @hostname = `hostname`.chomp
+      @hostname = `hostname`.to_s.chomp
       @timers = []
       @filters = []
       @mutex = Mutex.new
