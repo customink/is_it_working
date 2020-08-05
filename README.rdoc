@@ -53,9 +53,51 @@ A monitoring handler for this set up could be set up in <tt>config/initializers/
 
 See <tt>IsItWorking::Handler#check</tt> for built-in handlers.
 
+== Statuses
+
+A check can output one of three statuses: +ok+, +warn+ and +fail+. The most severe status across all checks will determine what status code the output returns:
+[ok]   200
+[warn] 302
+[fail] 500
+
+To return a status from any check, you can call its corresponding method on the yielded status object:
+
+  h.check :awesome_service do |status|
+    if AwesomeService.active?
+      status.ok("service active")
+    elsif AwesomeService.degraded?
+      status.warn("service degraded")
+    else
+      status.fail("service down")
+    end
+  end
+
+== Timers
+
+You can wrap a check in a timer to automatically return a warn or fail status if the check exceeds a timing threshold:
+
+  # Fail the check if it runs for more than 500ms, and warn if it runs for more than 150ms
+  h.timer(fail_after: 500, warn_after: 150) do
+    h.check :awesome_service do |status|
+      sleep 0.3
+      status.ok('This will warn!')
+    end
+  end
+
+At least one of +fail_after+ or +warn_after+ must be provided when using a timer.
+
+== Reporters
+
+Timing information can be yielded to a callback after checks have run, to execute your own code with the data:
+
+  # Report activerecord and dalli timing to cloudwatch via AWS Embedded Metrics (https://github.com/customink/aws-embedded-metrics-customink):
+  h.reporter [:dalli, :active_record] do |name, time|
+    Aws::Embedded::Metrics.logger { |l| l.put_metric(name, time, 'Seconds') }
+  end
+
 == Output
 
-The response from the handler will be a plain text description of the checks that were run and the results of those checks. If all the checks passed, the response code will be 200. If any checks fail, the response code will be 500. The response will look something like this:
+The response from the handler will be a plain text description of the checks that were run and the results of those checks. If all the checks passed, the response code will be 200. If any checks warn, the response code will be 302. If any checks fail, the response code will be 500. The response will look something like this:
 
   Host: example.com
   PID:  696
