@@ -29,7 +29,7 @@ module IsItWorking
     # Rails 3+ routes.rb file. Otherwise, an application stack can be supplied in the first
     # argument and a routing path in the second (defaults to <tt>/is_it_working</tt>) so
     # it can be used with the rackup +use+ method or in Rails.middleware.
-    def initialize(app=nil, route_path="/is_it_working", &block)
+    def initialize(app=nil, route_path=IsItWorking::HANDLER_PATH, &block)
       @app = app
       @route_path = route_path
       @hostname = `hostname`.to_s.chomp
