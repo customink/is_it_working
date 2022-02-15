@@ -1,3 +1,3 @@
 module IsItWorking
-  VERSION = '1.3.0'.freeze
+  VERSION = '1.3.1'.freeze
 end
