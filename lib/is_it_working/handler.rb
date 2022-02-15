@@ -32,7 +32,7 @@ module IsItWorking
     def initialize(app=nil, route_path="/is_it_working", &block)
       @app = app
       @route_path = route_path
-      @hostname = `hostname`.to_s.chomp
+      @hostname = %x(which hostname >/dev/null && hostname).chomp
       @timers = []
       @filters = []
       @reporters = []
@@ -57,7 +57,7 @@ module IsItWorking
     # the system hostname. You should override it if the value reported as the hostname by
     # the system is not useful or if exposing it publicly would create a security risk.
     def hostname=(val)
-      @hostname = val
+      @hostname = val.to_s
     end
 
     # Add a status check to the handler.
@@ -159,7 +159,7 @@ module IsItWorking
       end
 
       info = []
-      info << "Host: #{@hostname}" unless @hostname.size == 0
+      info << "Host: #{@hostname}" unless @hostname.empty?
       info << "PID:  #{$$}"
       info << "Timestamp: #{Time.now.iso8601}"
       info << "Elapsed Time: #{(elapsed_time * 1000).round}ms"
