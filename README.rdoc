@@ -118,3 +118,8 @@ Keep in mind that the output from the status check will be available on a public
 == Thread Safety
 
 By default status checks each happen in their own thread. If you write your own status check, you must make sure it is thread safe. If you need to synchronize the check logic, you can use the +synchronize+ method on the handler object to do so. Alternatively, you can pass <tt>:async => false</tt> to any +check+ specification. This will cause the check to be executed in the main request thread.
+
+== Support
+
+The gem is testing using Ruby 2.1 -> 3.1 and the relevant Rails versions per Ruby version.
+Using Appraisal, complete build structures are set up to ensure the entire compatibility matrix is tested.
