@@ -12,7 +12,7 @@ module IsItWorking
     end
 
     def report(filter)
-      func.call(filter.name, filter.status&.time.to_f)
+      func.call(filter.name, filter.status.try(:time).try(:to_f))
     end
 
     class << self

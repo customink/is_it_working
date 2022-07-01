@@ -1,4 +1,15 @@
 require 'spec_helper'
+require 'dalli'
+require 'active_support/cache'
+CACHE_CLASS = nil
+
+begin
+  require 'active_support/cache/dalli_store'
+  CACHE_CLASS = ActiveSupport::Cache::DalliStore
+rescue LoadError => e
+  require 'active_support/cache/mem_cache_store'
+  CACHE_CLASS = ActiveSupport::Cache::MemCacheStore
+end
 
 describe IsItWorking::DalliCheck do
 
@@ -27,10 +38,8 @@ describe IsItWorking::DalliCheck do
   end
 
   it "should be able to get the MemCache object from an ActiveSupport::Cache" do
-    require 'active_support/cache'
-    require 'active_support/cache/dalli_store'
-    ActiveSupport::Cache::DalliStore.should_receive(:new).with('cache-1.example.com', 'cache-2.example.com').and_return(memcache)
-    rails_cache = ActiveSupport::Cache::DalliStore.new('cache-1.example.com', 'cache-2.example.com')
+    CACHE_CLASS.should_receive(:new).with('cache-1.example.com', 'cache-2.example.com').and_return(memcache)
+    rails_cache = CACHE_CLASS.new('cache-1.example.com', 'cache-2.example.com')
     check = IsItWorking::DalliCheck.new(:cache => rails_cache)
     servers.first.should_receive(:alive?).and_return(true)
     servers.last.should_receive(:alive?).and_return(true)

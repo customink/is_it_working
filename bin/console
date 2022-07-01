@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+# This script is a starting point to start the Rails console.
+# Add necessary setup steps to this file.
+
+puts '== Starting IRB =='
+system('bundle console')

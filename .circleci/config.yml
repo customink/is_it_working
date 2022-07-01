@@ -1,0 +1,156 @@
+---
+# ---------------------------------------------------------------------------------------------------------------------
+# CircleCI Snippets
+#
+# Reusable snippets are defined below this section. These are yaml fragments that can injected into the standard
+# CircleCI configuration, reducing the complexity of the entire block.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CircleCI Commands Configuration
+#
+# Commands are re-usable steps that can be shared across jobs. For example the installation of gems using bundler or
+# waiting on a database connection. By defining them inside the commands section, they can be invoked as any standard
+# command on the system, but will already be preconfigured. This allows us to keep the jobs definition small and clean
+# ---------------------------------------------------------------------------------------------------------------------
+version: 2.1
+commands:
+  install_dependencies:
+    description: "Ensures the correct dependencies are installed"
+    steps:
+      - run:
+          name: "Aptitude"
+          command: apt update && apt install -y libsqlite3-dev memcached
+  bundle_install:
+    description: "Performs the bundler installation, relying on the CircleCI cache for performance"
+    steps:
+      - restore_cache:
+          keys:
+            - bundler-cache-v1.0-{{ checksum "is_it_working.gemspec" }}
+      - run:
+          name: "Bundle Install"
+          command: |
+            bundle config --local path vendor/bundle
+            bundle install --jobs 4 --retry 3
+            bundle exec appraisal install
+      - save_cache:
+          paths:
+            - vendor/bundle
+          key: bundler-cache-v1.0-{{ checksum "is_it_working.gemspec" }}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CircleCI Job Configuration
+#
+# This section defines all the available jobs that can be executed inside a Workflow.
+# Think of a Job as a batch of tasks that need to be performed to setup the environment and perform a specific task
+# such as running RSpec, uploading the test results to CodeClimate etc.
+# ---------------------------------------------------------------------------------------------------------------------
+jobs:
+  tests:
+    parameters:
+      ruby-version:
+        type: string
+    docker:
+      - image: 916869144969.dkr.ecr.us-east-1.amazonaws.com/customink/ruby:focal-<< parameters.ruby-version >>
+        aws_auth:
+          aws_access_key_id: ${PRODUCTION_AWS_ACCESS_KEY_ID}
+          aws_secret_access_key: ${PRODUCTION_AWS_SECRET_ACCESS_KEY}
+        user: root
+        environment:
+          RAILS_ENV: test
+          RACK_ENV: test
+    steps:
+      - checkout
+      - install_dependencies
+      - bundle_install
+      - run:
+          name: "RSpec Test Suite"
+          command: bin/test
+      - store_test_results:
+          path: test/reports
+
+  build_and_publish:
+    docker:
+      - image: 916869144969.dkr.ecr.us-east-1.amazonaws.com/customink/ruby:focal-2.1
+        aws_auth:
+          aws_access_key_id: ${PRODUCTION_AWS_ACCESS_KEY_ID}
+          aws_secret_access_key: ${PRODUCTION_AWS_SECRET_ACCESS_KEY}
+    steps:
+      - checkout
+      - run:
+          name: "Configure Rubygems"
+          command: |
+            mkdir ~/.gem
+            touch ~/.gem/credentials
+            echo "---" >> ~/.gem/credentials
+            echo ":github: Bearer $CINK_CIRCLE_CI_GITHUB_PACKAGES_TOKEN" >> ~/.gem/credentials
+            chmod 600 ~/.gem/credentials
+      - run:
+          name: "Gem build"
+          command: gem build is_it_working.gemspec
+      - run:
+          name: "Gem Push"
+          command: gem push --key github --host https://rubygems.pkg.github.com/customink is_it_working-*.gem
+
+# ---------------------------------------------------------------------------------------------------------------------
+# CircleCI Workflow Execution Order
+#
+# Here we define the Workflow, the order of the various jobs and their dependencies.
+# This allows us to decide whether to run certain tasks sequentially or run several of them in parallel.
+# ---------------------------------------------------------------------------------------------------------------------
+workflows:
+  version: 2.1
+  client_client:
+    jobs:
+      - tests:
+          context: customink
+          name: "Ruby 2.1 Tests"
+          ruby-version: "2.1"
+      - tests:
+          context: customink
+          name: "Ruby 2.2 Tests"
+          ruby-version: "2.2"
+      - tests:
+          context: customink
+          name: "Ruby 2.3 Tests"
+          ruby-version: "2.3"
+      - tests:
+          context: customink
+          name: "Ruby 2.4 Tests"
+          ruby-version: "2.4"
+      - tests:
+          context: customink
+          name: "Ruby 2.5 Tests"
+          ruby-version: "2.5"
+      - tests:
+          context: customink
+          name: "Ruby 2.6 Tests"
+          ruby-version: "2.6"
+      - tests:
+          context: customink
+          name: "Ruby 2.7 Tests"
+          ruby-version: "2.7"
+      - tests:
+          context: customink
+          name: "Ruby 3.0 Tests"
+          ruby-version: "3.0"
+      - tests:
+          context: customink
+          name: "Ruby 3.1 Tests"
+          ruby-version: "3.1"
+      - build_and_publish:
+          context: customink
+          requires:
+            - "Ruby 2.1 Tests"
+            - "Ruby 2.2 Tests"
+            - "Ruby 2.3 Tests"
+            - "Ruby 2.4 Tests"
+            - "Ruby 2.5 Tests"
+            - "Ruby 2.6 Tests"
+            - "Ruby 2.7 Tests"
+            - "Ruby 3.0 Tests"
+            - "Ruby 3.1 Tests"
+          filters:
+            branches:
+              only:
+                - master
