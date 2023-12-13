@@ -1,5 +1,7 @@
 module IsItWorking
   class Timer
+    class TimerFailedError < StandardError; end;
+    
     attr_reader :failure_threshold, :filter, :warning_threshold
 
     def initialize(warn_after: Float::INFINITY, fail_after: Float::INFINITY)
@@ -15,6 +17,8 @@ module IsItWorking
       elsif warn_timeout_exceeded?(status.time)
         status.warn("runtime exceeded warning threshold: #{warning_threshold}ms")
       end
+    rescue Exception => e
+      raise TimerFailedError.new("Failed to run timer for status check #{status.name}: #{e.message}")
     end
 
     class << self
