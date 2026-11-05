@@ -131,11 +131,26 @@ The comparison ignores the port and letter case, and uses the request's own Host
 
 Keep in mind that the output from the status check will be available on a publicly accessible URL. This can pose a security risk if some servers are not on a private network behind a firewall. The simplest protection is to restrict the page to an internal hostname with Handler#allowed_hosts= (see Restricting Hosts above). If necessary, you can obscure the host names in the predefined checks by providing an <tt>:alias</tt> option that will be output instead of the actual host name or IP address. Also, you can manually specify the hostname that the handler reports for the application with the Handler#hostname= method.
 
+=== How host restriction works
+
+The status page is matched on the request path only, so by default it answers on every hostname that reaches the application, including public ones. Host restriction closes that gap with the following design:
+
+* It is opt-in. With no allowed hosts configured the behavior is unchanged, so upgrading the gem changes nothing until you set <tt>allowed_hosts</tt> or the <tt>IS_IT_WORKING_ALLOWED_HOSTS</tt> environment variable. The environment variable lets a deployment pipeline set the policy, for example from an app's internal ingress hosts, without a code change.
+* The decision is based on the request's own Host header (falling back to SERVER_NAME). Forwarded headers such as X-Forwarded-Host are never trusted, because a client can set them to any value.
+* A refused request is not answered by the handler. In a middleware stack it continues to the application, which renders its normal 404, so the status page looks like it does not exist on that hostname. A standalone handler returns 404.
+* A Host that is an IP address literal is always allowed, so orchestrator health probes that address the container by IP keep working.
+* Entries match either an exact hostname or, with a leading dot, any host ending with it. Matching ignores the port and letter case, and a leading dot entry only matches real subdomains, so <tt>internal.example.com.evil.test</tt> does not match <tt>.internal.example.com</tt>.
+
 == Thread Safety
 
 By default status checks each happen in their own thread. If you write your own status check, you must make sure it is thread safe. If you need to synchronize the check logic, you can use the +synchronize+ method on the handler object to do so. Alternatively, you can pass <tt>:async => false</tt> to any +check+ specification. This will cause the check to be executed in the main request thread.
 
 == Support
 
-The gem is testing using Ruby 2.1 -> 3.1 and the relevant Rails versions per Ruby version.
+The gem is tested on CircleCI using Ruby 2.7 -> 4.0 and the relevant Rails versions per Ruby version:
+[Ruby 2.7]     Rails 6.0
+[Ruby 3.0-3.1] Rails 6.1 and 7.0
+[Ruby 3.2-4.0] Rails 7.1, 7.2 and 8.0
+
+Older Ruby versions (2.1 -> 2.6) are no longer tested.
 Using Appraisal, complete build structures are set up to ensure the entire compatibility matrix is tested.
