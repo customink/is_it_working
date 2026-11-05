@@ -191,6 +191,108 @@ describe IsItWorking::Handler do
     handler.call("PATH_INFO" => "/is_it_working").last.join("").should include("woot")
   end
 
+  context "allowed hosts" do
+    let(:app_response) { [200, {"Content-Type" => "text/plain"}, ["app"]] }
+    let(:app) { lambda { |env| app_response } }
+
+    def handler(app = nil, allowed_hosts = nil)
+      IsItWorking::Handler.new(app, "/is_it_working", allowed_hosts: allowed_hosts) do |h|
+        h.check(:test, :async => false) { |status| status.ok("Woot!") }
+      end
+    end
+
+    def request(stack, host, extra = {})
+      stack.call({"PATH_INFO" => "/is_it_working", "HTTP_HOST" => host}.merge(extra))
+    end
+
+    def body(response)
+      response.last.join("")
+    end
+
+    around :each do |example|
+      original = ENV.delete("IS_IT_WORKING_ALLOWED_HOSTS")
+      begin
+        example.run
+      ensure
+        ENV["IS_IT_WORKING_ALLOWED_HOSTS"] = original if original
+      end
+    end
+
+    it "answers on any host when no allowed hosts are configured" do
+      response = request(handler(app), "www.example.com")
+      expect(response.first).to eq 200
+      expect(body(response)).to include("Woot!")
+    end
+
+    it "answers only on the allowed hosts and lets other requests fall through to the app" do
+      stack = handler(app, ["myapp.internal.example.com"])
+      expect(body(request(stack, "myapp.internal.example.com"))).to include("Woot!")
+      expect(request(stack, "www.example.com")).to be app_response
+    end
+
+    it "returns 404 for other hosts when used as a standalone handler" do
+      response = request(handler(nil, ["myapp.internal.example.com"]), "www.example.com")
+      expect(response.first).to eq 404
+      expect(body(response)).not_to include("Woot!")
+    end
+
+    it "matches a leading-dot entry as a suffix" do
+      stack = handler(app, [".internal.example.com"])
+      expect(body(request(stack, "myapp.internal.example.com"))).to include("Woot!")
+      expect(request(stack, "internal.example.com.evil.test")).to be app_response
+    end
+
+    it "ignores the port and letter case of the Host header" do
+      stack = handler(app, ["MyApp.Internal.Example.com"])
+      expect(body(request(stack, "myapp.internal.example.com:8080"))).to include("Woot!")
+    end
+
+    it "falls back to SERVER_NAME when there is no Host header" do
+      stack = handler(app, ["myapp.internal.example.com"])
+      response = stack.call("PATH_INFO" => "/is_it_working", "SERVER_NAME" => "myapp.internal.example.com")
+      expect(body(response)).to include("Woot!")
+    end
+
+    it "always allows a Host that is an IP address literal" do
+      stack = handler(app, ["myapp.internal.example.com"])
+      expect(body(request(stack, "10.1.2.3:8080"))).to include("Woot!")
+      expect(body(request(stack, "[fd00::1]:8080"))).to include("Woot!")
+      expect(body(request(stack, "fd00::1"))).to include("Woot!")
+      expect(request(stack, "evil:")).to be app_response
+      expect(request(stack, "10.1.2.0/24")).to be app_response
+    end
+
+    it "does not trust X-Forwarded-Host" do
+      stack = handler(app, ["myapp.internal.example.com"])
+      response = request(stack, "www.example.com", "HTTP_X_FORWARDED_HOST" => "myapp.internal.example.com")
+      expect(response).to be app_response
+    end
+
+    it "reads the default list from IS_IT_WORKING_ALLOWED_HOSTS" do
+      ENV["IS_IT_WORKING_ALLOWED_HOSTS"] = " myapp.internal.example.com, .other.example.com "
+      stack = handler(app)
+      expect(stack.allowed_hosts).to eq ["myapp.internal.example.com", ".other.example.com"]
+      expect(body(request(stack, "a.other.example.com"))).to include("Woot!")
+      expect(request(stack, "www.example.com")).to be app_response
+    end
+
+    it "lets an explicit list override the environment and treats an empty value as unrestricted" do
+      ENV["IS_IT_WORKING_ALLOWED_HOSTS"] = "myapp.internal.example.com"
+      expect(handler(app, ["other.example.com"]).allowed_hosts).to eq ["other.example.com"]
+      expect(handler(app, "").allowed_hosts).to be_nil
+      expect(body(request(handler(app, []), "www.example.com"))).to include("Woot!")
+    end
+
+    it "can be set from the configuration block" do
+      stack = IsItWorking::Handler.new(app) do |h|
+        h.allowed_hosts = "myapp.internal.example.com"
+        h.check(:test, :async => false) { |status| status.ok("Woot!") }
+      end
+      expect(request(stack, "www.example.com")).to be app_response
+      expect(body(request(stack, "myapp.internal.example.com"))).to include("Woot!")
+    end
+  end
+
   # NOTE: these tests are only to document existing behavior, not actual requirements.
   context "Adding filters:" do
     let(:handler) do

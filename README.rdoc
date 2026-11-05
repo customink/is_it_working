@@ -114,9 +114,22 @@ The response from the handler will be a plain text description of the checks tha
   OK:   directory - /app/myapp/system/data exists with read/write permission (0.044ms)
   OK:   ping - mail.example.com is accepting connections on port "smtp" (61.854ms)
 
+== Restricting Hosts
+
+The status page answers on every hostname that reaches the application. To serve it only on an internal hostname, give the handler the hosts it may answer on. An entry that starts with a dot matches any host ending with it. Requests for any other host fall through to the application, which normally renders its 404 page, so the status page is invisible there.
+
+  Rails.configuration.middleware.use(IsItWorking::Handler) do |h|
+    h.allowed_hosts = ["myapp.internal.example.com", ".internal.example.com"]
+    h.check :active_record
+  end
+
+Without an explicit value the handler reads the <tt>IS_IT_WORKING_ALLOWED_HOSTS</tt> environment variable (comma separated), so a deployment pipeline can set the policy without a code change. If neither is set the page is unrestricted, as before.
+
+The comparison ignores the port and letter case, and uses the request's own Host header rather than a forwarded header a client could set. A Host that is an IP address literal is always accepted, so orchestrator health probes that address the container by IP keep working.
+
 == Security
 
-Keep in mind that the output from the status check will be available on a publicly accessible URL. This can pose a security risk if some servers are not on a private network behind a firewall. If necessary, you can obscure the host names in the predefined checks by providing an <tt>:alias</tt> option that will be output instead of the actual host name or IP address. Also, you can manually specify the hostname that the handler reports for the application with the Handler#hostname= method.
+Keep in mind that the output from the status check will be available on a publicly accessible URL. This can pose a security risk if some servers are not on a private network behind a firewall. The simplest protection is to restrict the page to an internal hostname with Handler#allowed_hosts= (see Restricting Hosts above). If necessary, you can obscure the host names in the predefined checks by providing an <tt>:alias</tt> option that will be output instead of the actual host name or IP address. Also, you can manually specify the hostname that the handler reports for the application with the Handler#hostname= method.
 
 == Thread Safety
 
