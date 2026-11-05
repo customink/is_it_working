@@ -1,3 +1,5 @@
+require 'ipaddr'
+
 module IsItWorking
   # Rack handler that will run a set of status checks on the application and report the
   # results. The results are formatted in plain text. If any of the checks fails, the
@@ -20,6 +22,11 @@ module IsItWorking
   #   end
   class Handler
     PATH_INFO = "PATH_INFO".freeze
+    HTTP_HOST = "HTTP_HOST".freeze
+    SERVER_NAME = "SERVER_NAME".freeze
+    ALLOWED_HOSTS_ENV = "IS_IT_WORKING_ALLOWED_HOSTS".freeze
+
+    attr_reader :allowed_hosts
 
     # Create a new handler. This method can take a block which will yield itself so it can
     # be configured.
@@ -29,7 +36,10 @@ module IsItWorking
     # Rails 3+ routes.rb file. Otherwise, an application stack can be supplied in the first
     # argument and a routing path in the second (defaults to <tt>/is_it_working</tt>) so
     # it can be used with the rackup +use+ method or in Rails.middleware.
-    def initialize(app=nil, route_path="/is_it_working", &block)
+    #
+    # The <tt>allowed_hosts:</tt> option restricts which hostnames the handler answers on;
+    # see #allowed_hosts=.
+    def initialize(app=nil, route_path="/is_it_working", allowed_hosts: nil, &block)
       @app = app
       @route_path = route_path
       @hostname = %x(which hostname >/dev/null && hostname).chomp
@@ -37,11 +47,13 @@ module IsItWorking
       @filters = []
       @reporters = []
       @mutex = Mutex.new
+      self.allowed_hosts = allowed_hosts.nil? ? ENV[ALLOWED_HOSTS_ENV] : allowed_hosts
       yield self if block_given?
     end
 
     def call(env)
       if @app.nil? || env[PATH_INFO] == @route_path
+        return not_found(env) unless host_allowed?(env)
         statuses = []
         t = Time.now
         statuses = Filter.run_filters(@filters)
@@ -58,6 +70,25 @@ module IsItWorking
     # the system is not useful or if exposing it publicly would create a security risk.
     def hostname=(val)
       @hostname = val.to_s
+    end
+
+    # Restrict the status page to requests whose Host header matches one of the given
+    # hosts. Entries are compared without the port and ignoring case; an entry that starts
+    # with a dot matches any host ending with it (<tt>".internal.example.com"</tt>). A Host
+    # that is an IP address literal is always accepted, so orchestrator health probes that
+    # address the container by IP keep working.
+    #
+    # Accepts an array or a comma-separated string. When nothing is given the handler reads
+    # the <tt>IS_IT_WORKING_ALLOWED_HOSTS</tt> environment variable. nil or an empty list
+    # means no restriction, which is the default.
+    #
+    # A refused request is not answered by the handler: in a middleware stack it continues
+    # to the application, which normally renders its 404 page, and a standalone handler
+    # returns 404.
+    def allowed_hosts=(hosts)
+      list = hosts.is_a?(String) ? hosts.split(",") : Array(hosts)
+      list = list.map { |h| h.to_s.strip.downcase }.reject(&:empty?)
+      @allowed_hosts = list.empty? ? nil : list
     end
 
     # Add a status check to the handler.
@@ -122,6 +153,39 @@ module IsItWorking
     end
 
     protected
+
+    def host_allowed?(env) #:nodoc:
+      return true if @allowed_hosts.nil?
+      host = request_host(env)
+      return true if ip_literal?(host)
+      @allowed_hosts.any? { |allowed| allowed.start_with?(".") ? host.end_with?(allowed) : host == allowed }
+    end
+
+    # The request's Host header without its port. Reads HTTP_HOST on purpose: a forwarded
+    # host header can be set by the client to anything.
+    def request_host(env) #:nodoc:
+      host = (env[HTTP_HOST] || env[SERVER_NAME]).to_s.strip.downcase
+      if host.start_with?("[")
+        host.sub(/\]:\d+\z/, "]")
+      elsif host.count(":") == 1
+        host.sub(/:\d+\z/, "")
+      else
+        host
+      end
+    end
+
+    def ip_literal?(host) #:nodoc:
+      return false if host.empty? || host.include?("/")
+      IPAddr.new(host.sub(/\A\[(.*)\]\z/, '\1'))
+      true
+    rescue ArgumentError
+      false
+    end
+
+    def not_found(env) #:nodoc:
+      return @app.call(env) if @app
+      [404, {"Content-Type" => "text/plain; charset=utf8", "Cache-Control" => "no-cache"}, ["Not Found"]]
+    end
 
     # Lookup a status check filter from the name and arguments
     def lookup_check(name, options) #:nodoc:

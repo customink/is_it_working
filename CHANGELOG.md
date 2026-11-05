@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - Unreleased
+
+### Added
+
+- `Handler#allowed_hosts=` and the `allowed_hosts:` option restrict the status page to a list of hostnames (exact, or a dot-prefixed suffix). Requests for other hosts fall through to the application; a standalone handler answers 404. Defaults to the `IS_IT_WORKING_ALLOWED_HOSTS` environment variable (comma separated). A Host that is an IP address literal is always allowed so health probes keep working. Unset means unrestricted, as before.
+
 ## [1.4.1] - 2022-07-11
 - Updated `rake` to `~> 13.0` for Ruby `~> 2.2`
 
