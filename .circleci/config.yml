@@ -91,6 +91,17 @@ jobs:
       - run:
           name: "Gem Push"
           command: gem push --key github --host https://rubygems.pkg.github.com/customink is_it_working-*.gem
+      - run:
+          name: "Tag and Release"
+          command: |
+            version=$(ls is_it_working-*.gem | sed -E 's/^is_it_working-(.*)\.gem$/\1/')
+            status=$(curl -s -o /tmp/release.json -w "%{http_code}" -X POST \
+              -H "Authorization: Bearer $CINK_CIRCLE_CI_GITHUB_PACKAGES_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/releases" \
+              -d "{\"tag_name\":\"v$version\",\"target_commitish\":\"$CIRCLE_SHA1\",\"name\":\"Is It Working - $version Release\",\"generate_release_notes\":true}")
+            cat /tmp/release.json
+            [ "$status" = "201" ]
 
 # ---------------------------------------------------------------------------------------------------------------------
 # CircleCI Workflow Execution Order
