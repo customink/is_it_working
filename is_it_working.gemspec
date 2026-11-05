@@ -30,6 +30,9 @@ Gem::Specification.new do |spec|
   if ::Gem::Version.new(RUBY_VERSION) <= ::Gem::Version.new("2.5.0")
     spec.add_development_dependency 'dalli', '< 3.0.0'
     spec.add_development_dependency 'sqlite3', '~> 1.3.0'
+  elsif ::Gem::Version.new(RUBY_VERSION) < ::Gem::Version.new("3.0.0")
+    spec.add_development_dependency 'dalli', '~> 3'
+    spec.add_development_dependency 'sqlite3', '~> 1.6.0'
   else
     spec.add_development_dependency 'dalli', '~> 3'
     spec.add_development_dependency 'sqlite3'
