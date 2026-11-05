@@ -30,7 +30,10 @@ describe IsItWorking::ActiveRecordCheck do
 
   it "succeeds if the ActiveRecord connection can be reconnected" do
     # On Rails 4, calling `disconnect!` puts the adapter in a weird state that can't be restored with `verify!`. Using `reconnect!` is ok.
-    abstract_conn.reconnect!
+    begin
+      abstract_conn.reconnect!
+    rescue NotImplementedError
+    end
     abstract_conn.stub(active?: true)
     ActiveRecord::Base.stub(connection: abstract_conn)
     check = IsItWorking::ActiveRecordCheck.new
